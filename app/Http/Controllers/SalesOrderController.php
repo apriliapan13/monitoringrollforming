@@ -18,7 +18,7 @@ class SalesOrderController extends Controller
         if ($request->filled('search')) {
             $query->where(function ($q) use ($request) {
                 $q->where('so_number', 'like', '%' . $request->search . '%')
-                  ->orWhere('project_executive', 'like', '%' . $request->search . '%');
+                    ->orWhere('project_executive', 'like', '%' . $request->search . '%');
             });
         }
 
@@ -56,7 +56,6 @@ class SalesOrderController extends Controller
         $validated['status'] = 'ON PROCESS';
 
         SalesOrder::create($validated);
-
         $this->regenerateAllSchedules();
 
         return redirect()->route('sales-orders.index')
@@ -65,37 +64,27 @@ class SalesOrderController extends Controller
 
     public function show(SalesOrder $salesOrder)
     {
-        $salesOrder->load(['dailyTargets', 'actualProductions']);
+        $salesOrder->load(['dailyTargets','actualProductions']);
 
         $machine = MachineSetting::first();
-
         $estimatedDays = $salesOrder->leadtime_days;
-
         $estimatedHours = 0;
 
         if ($machine && $machine->cycle_time_sec > 0) {
-            $estimatedHours = round(
-                ($salesOrder->quantity * $machine->cycle_time_sec) / 3600,
-                1
-            );
+            $estimatedHours = round(($salesOrder->quantity * $machine->cycle_time_sec) / 3600, 1);
         }
 
-        $targetPerDay = 0;
+        $targetPerDay = $estimatedDays > 0
+            ? ceil($salesOrder->quantity / $estimatedDays)
+            : 0;
 
-        if ($estimatedDays > 0) {
-            $targetPerDay = ceil($salesOrder->quantity / $estimatedDays);
-        }
-
-        return view(
-            'sales-orders.show',
-            compact(
-                'salesOrder',
-                'machine',
-                'estimatedDays',
-                'estimatedHours',
-                'targetPerDay'
-            )
-        );
+        return view('sales-orders.show', compact(
+            'salesOrder',
+            'machine',
+            'estimatedDays',
+            'estimatedHours',
+            'targetPerDay'
+        ));
     }
 
     public function edit(SalesOrder $salesOrder)
@@ -122,7 +111,6 @@ class SalesOrderController extends Controller
         ]);
 
         $salesOrder->update($validated);
-
         $this->regenerateAllSchedules();
 
         return redirect()->route('sales-orders.index')
@@ -134,13 +122,30 @@ class SalesOrderController extends Controller
         DailyTarget::where('sales_order_id', $salesOrder->id)->delete();
 
         $salesOrder->delete();
-
         $this->regenerateAllSchedules();
 
         return redirect()->route('sales-orders.index')
             ->with('success', 'Sales Order berhasil dihapus.');
     }
 
+    private function getStartProductionDate(SalesOrder $order): Carbon
+    {
+        $startDate = Carbon::parse($order->order_date);
+
+        if ($order->created_at && $order->created_at->hour >= 13) {
+            $startDate->addDay();
+        }
+
+        $startDate = $startDate->startOfDay();
+
+        while (!$this->isWorkingDay($startDate)) {
+            $startDate = $this->nextWorkingDay($startDate);
+        }
+
+        return $startDate;
+    }
+
+    
     private function regenerateAllSchedules()
     {
         DB::transaction(function () {
@@ -150,60 +155,97 @@ class SalesOrderController extends Controller
             $machine = MachineSetting::first();
             $machineCapacity = (int) ($machine?->daily_capacity ?? 312);
 
-            $orders = SalesOrder::orderBy('deadline', 'asc')
-                ->orderBy('order_date', 'asc')
-                ->get();
+            $orders = SalesOrder::orderBy('deadline', 'asc')->get();
 
-            $dailyUsage = [];
+            $remaining = [];
+            foreach ($orders as $o) {
+                $remaining[$o->id] = $o->quantity;
+            }
 
-            foreach ($orders as $order) {
+            $currentDate = $orders->count()
+                ? $this->getStartProductionDate($orders->first())
+                : now();
 
-                $remainingQty = $order->quantity;
+            while (collect($remaining)->sum() > 0) {
 
-                $currentDate = Carbon::parse($order->deadline);
-
-                while (!$this->isWorkingDay($currentDate)) {
-                    $currentDate = $this->previousWorkingDay($currentDate);
+                if (!$this->isWorkingDay($currentDate)) {
+                    $currentDate = $this->nextWorkingDay($currentDate);
+                    continue;
                 }
 
-                while ($remainingQty > 0) {
+                $capacity = $machineCapacity;
 
-                    if ($currentDate->lt(Carbon::parse($order->order_date))) {
+                $activeOrders = $orders->filter(function ($o) use ($remaining, $currentDate) {
+                    return $remaining[$o->id] > 0
+                        && $this->getStartProductionDate($o)->lte($currentDate);
+                });
+
+                if ($activeOrders->isEmpty()) {
+                    $currentDate = $this->nextWorkingDay($currentDate);
+                    continue;
+                }
+
+                $groups = $activeOrders->groupBy(function ($o) {
+                    return Carbon::parse($o->deadline)->format('Y-m-d');
+                })->sortKeys();
+
+                foreach ($groups as $group) {
+
+                    if ($capacity <= 0) {
                         break;
                     }
 
-                    $dateKey = $currentDate->format('Y-m-d');
+                    $unfinished = $group->filter(fn($o) => $remaining[$o->id] > 0);
 
-                    if (!isset($dailyUsage[$dateKey])) {
-                        $dailyUsage[$dateKey] = 0;
+                    if ($unfinished->isEmpty()) {
+                        continue;
                     }
 
-                    $availableCapacity =
-                        $machineCapacity - $dailyUsage[$dateKey];
+                    $share = max(1, floor($capacity / $unfinished->count()));
 
-                    if ($availableCapacity > 0) {
+                    foreach ($unfinished as $order) {
 
-                        $allocatedQty = min(
-                            $remainingQty,
-                            $availableCapacity
+                        if ($capacity <= 0) {
+                            break;
+                        }
+
+                        $alloc = min(
+                            $share,
+                            $remaining[$order->id],
+                            $capacity
                         );
 
-                        DailyTarget::create([
+                        if ($alloc <= 0) {
+                            continue;
+                        }
+
+                        $target = DailyTarget::firstOrNew([
                             'sales_order_id' => $order->id,
-                            'target_date' => $currentDate->copy(),
-                            'target_qty' => $allocatedQty,
-                            'created_by' => auth()->id(),
+                            'target_date' => $currentDate->format('Y-m-d'),
                         ]);
 
-                        $dailyUsage[$dateKey] += $allocatedQty;
-                        $remainingQty -= $allocatedQty;
-                    }
+                        $target->target_qty = ($target->target_qty ?? 0) + $alloc;
+                        $target->created_by = auth()->id();
+                        $target->save();
 
-                    $currentDate = $this->previousWorkingDay($currentDate);
+                        $remaining[$order->id] -= $alloc;
+                        $capacity -= $alloc;
+                    }
                 }
+
+
+                $currentDate = $this->nextWorkingDay($currentDate);
+            }
+
+            foreach ($orders as $order) {
+                $order->status = now()->gt(Carbon::parse($order->deadline))
+                    ? 'LATE'
+                    : 'ON PROCESS';
+                $order->save();
             }
         });
     }
+
 
     private function isWorkingDay(Carbon $date): bool
     {
@@ -216,6 +258,17 @@ class SalesOrderController extends Controller
 
         do {
             $date->subDay();
+        } while ($date->isSaturday() || $date->isSunday());
+
+        return $date;
+    }
+
+    private function nextWorkingDay(Carbon $date): Carbon
+    {
+        $date = $date->copy();
+
+        do {
+            $date->addDay();
         } while ($date->isSaturday() || $date->isSunday());
 
         return $date;
