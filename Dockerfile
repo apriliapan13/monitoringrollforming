@@ -11,8 +11,7 @@ RUN apt-get update && apt-get install -y \
 
 RUN docker-php-ext-configure gd --with-freetype --with-jpeg
 
-RUN docker-php-ext-install zip pdo pdo_mysql
-
+RUN docker-php-ext-install gd zip pdo pdo_mysql
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
