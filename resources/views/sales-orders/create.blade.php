@@ -31,10 +31,18 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label" for="description">Deskripsi</label>
-                    <input type="text" name="description" id="description"
-                        class="form-control"
-                        value="{{ old('description', 'Channel') }}" required>
+                  <label class="form-label" for="description">Deskripsi</label>
+<select name="description" id="description" class="form-control" required>
+    <option value="">-- Pilih Deskripsi --</option>
+    <option value="Single Channel"
+        {{ old('description') == 'Single Channel' ? 'selected' : '' }}>
+        Single Channel
+    </option>
+    <option value="Double Channel"
+        {{ old('description') == 'Double Channel' ? 'selected' : '' }}>
+        Double Channel
+    </option>
+</select>
                 </div>
 
                 <div class="form-group">

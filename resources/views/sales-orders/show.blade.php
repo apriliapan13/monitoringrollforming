@@ -25,10 +25,14 @@
                 <span class="detail-value">{{ $salesOrder->so_number }}</span>
                 <span class="detail-label">Executive</span>
                 <span class="detail-value">{{ $salesOrder->project_executive ?? '-' }}</span>
-                <span class="detail-label">Deskripsi</span>
-                <span class="detail-value">{{ $salesOrder->description }}</span>
-                <span class="detail-label">Qty Order</span>
-                <span class="detail-value font-mono">{{ number_format($salesOrder->quantity) }} ea</span>
+             <span class="detail-label">Deskripsi</span>
+<span class="detail-value">{{ $salesOrder->description }}</span>
+
+<span class="detail-label">Ukuran</span>
+<span class="detail-value">{{ $salesOrder->size }}</span>
+
+<span class="detail-label">Qty Order</span>
+<span class="detail-value font-mono">{{ number_format($salesOrder->quantity) }} ea</span>
                 <span class="detail-label">Length</span>
                 <span class="detail-value font-mono">{{ number_format($salesOrder->length) }} mm</span>
                 <span class="detail-label">Tanggal Order</span>

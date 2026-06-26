@@ -7,6 +7,7 @@ use App\Models\MachineSetting;
 use App\Models\DailyTarget;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Carbon\Carbon;
 
 class SalesOrderController extends Controller
@@ -39,7 +40,14 @@ class SalesOrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'so_number' => 'required|string|unique:sales_orders',
+'so_number' => [
+    'required',
+    'string',
+    Rule::unique('sales_orders')->where(function ($query) use ($request) {
+        return $query->where('description', $request->description)
+                     ->where('size', $request->size);
+    }),
+],
             'project_executive' => 'nullable|string|max:100',
             'description' => 'required|string|max:255',
             'batch' => 'nullable|string|max:50',
@@ -109,8 +117,16 @@ $estimatedDays = $startDate->diffInDays($salesOrder->deadline) + 1;
     public function update(Request $request, SalesOrder $salesOrder)
     {
         $validated = $request->validate([
-            'so_number' => 'required|string|unique:sales_orders,so_number,' . $salesOrder->id,
-            'project_executive' => 'nullable|string|max:100',
+'so_number' => [
+    'required',
+    'string',
+    Rule::unique('sales_orders')
+        ->ignore($salesOrder->id)
+        ->where(function ($query) use ($request) {
+            return $query->where('description', $request->description)
+                         ->where('size', $request->size);
+        }),
+],            'project_executive' => 'nullable|string|max:100',
             'description' => 'required|string|max:255',
             'batch' => 'nullable|string|max:50',
             'size' => 'required|string|in:41X41,41X21',
@@ -214,38 +230,17 @@ $unfinished = $group->filter(fn($o) => $remaining[$o->id] > 0);
 if ($unfinished->isEmpty()) {
     continue;
 }
-$totalNeed = 0;
-
-foreach ($unfinished as $order) {
-    $leadTime = max(1, $order->leadtime_days);
-    $totalNeed += (int) ceil($order->quantity / $leadTime);
-}
-$availableCapacity = min($capacity, $totalNeed);
-
 foreach ($unfinished as $order) {
 
     if ($capacity <= 0) {
         break;
     }
 
-// Hitung target harian berdasarkan lead time
-$leadTime = max(1, $order->leadtime_days);
-
-$dailyTarget = (int) ceil($order->quantity / $leadTime);
-
-// Hitung proporsi kebutuhan SO terhadap total kebutuhan group
-$proportion = $totalNeed > 0
-    ? ($dailyTarget / $totalNeed)
-    : 0;
-
-// Alokasi kapasitas berdasarkan proporsi
-$plannedAllocation = (int) round($availableCapacity * $proportion);
-
-$alloc = min(
-    $plannedAllocation,
-    $remaining[$order->id],
-    $capacity
-);
+    // Isi kapasitas hari ini semaksimal mungkin
+    $alloc = min(
+        $remaining[$order->id],
+        $capacity
+    );
 
     if ($alloc <= 0) {
         continue;

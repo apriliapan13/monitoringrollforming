@@ -47,11 +47,12 @@
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>No. SO</th>
-                        <th>Executive</th>
-                        <th>Deskripsi</th>
-                        <th class="text-right">Qty</th>
-                        <th class="text-right">Length</th>
+                       <th>NO. SO</th>
+<th>EXECUTIVE</th>
+<th>DESKRIPSI</th>
+<th>DIMENSI</th>
+<th>QTY</th>
+<th>LENGTH</th>
                         <th>Tgl Order</th>
                         <th>Deadline</th>
                         <th>Status</th>
@@ -64,8 +65,13 @@
                         <td>{{ $orders->firstItem() + $i }}</td>
                         <td><a href="{{ route('sales-orders.show', $order) }}"><strong>{{ $order->so_number }}</strong></a></td>
                         <td>{{ $order->project_executive ?? '-' }}</td>
-                        <td>{{ $order->description }}</td>
-                        <td class="text-right font-mono">{{ number_format($order->quantity) }}</td>
+                       <td>{{ $order->description }}</td>
+
+<td>
+    {{ $order->size }}
+</td>
+
+<td>{{ number_format($order->quantity) }}</td>
                         <td class="text-right font-mono">{{ number_format($order->length) }}</td>
                         <td>{{ $order->order_date?->format('d/m/Y') }}</td>
                         <td>{{ $order->deadline?->format('d/m/Y') }}</td>
@@ -95,8 +101,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="text-center text-muted" style="padding:40px">
-                            Belum ada Sales Order.
+<td colspan="11" class="text-center text-muted" style="padding:40px">                            Belum ada Sales Order.
                         </td>
                     </tr>
                     @endforelse

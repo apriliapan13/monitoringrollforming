@@ -7,7 +7,9 @@
 @section('content')
 <div class="card reveal" style="max-width:720px">
     <div class="card-header">
-        <span class="card-title">Edit {{ $salesOrder->so_number }}</span>
+<span class="card-title">
+    Form Edit Sales Order
+</span>
     </div>
     <div class="card-body">
         <form method="POST" action="{{ route('sales-orders.update', $salesOrder) }}" id="form-edit-so">
@@ -25,12 +27,29 @@
 
             <div class="form-row">
                 <div class="form-group">
-                    <label class="form-label" for="description">Deskripsi</label>
-                    <input type="text" name="description" id="description" class="form-control" value="{{ old('description', $salesOrder->description) }}" required aria-required="true">
-                </div>
+    <label class="form-label" for="description">Deskripsi</label>
+
+    <select name="description"
+        id="description"
+        class="form-control"
+        required>
+
+        <option value="Single Channel"
+            {{ old('description', $salesOrder->description) == 'Single Channel' ? 'selected' : '' }}>
+            Single Channel
+        </option>
+
+        <option value="Double Channel"
+            {{ old('description', $salesOrder->description) == 'Double Channel' ? 'selected' : '' }}>
+            Double Channel
+        </option>
+
+    </select>
+</div>
                 <div class="form-group">
                     <label class="form-label" for="batch">Batch</label>
-                    <input type="text" name="batch" id="batch" class="form-control" value="{{ old('batch', $salesOrder->batch) }}">
+                    <input type="text" name="batch" id="batch" class="form-control"value="{{ old('batch', $salesOrder->batch) }}"
+placeholder="- / Add"="{{ old('batch', $salesOrder->batch) }}">
                 </div>
             </div>
 
@@ -40,13 +59,45 @@
                     <input type="number" name="quantity" id="quantity" class="form-control" value="{{ old('quantity', $salesOrder->quantity) }}" required min="1" aria-required="true">
                 </div>
                 <div class="form-group">
-                    <label class="form-label" for="length">Length (mm)</label>
-                    <input type="number" name="length" id="length" class="form-control" value="{{ old('length', $salesOrder->length) }}" required min="1" aria-required="true">
-                </div>
-                <div class="form-group">
-                    <label class="form-label" for="kg_batch">Berat (Kg)</label>
-                    <input type="number" name="kg_batch" id="kg_batch" class="form-control" value="{{ old('kg_batch', $salesOrder->kg_batch) }}" step="0.01">
-                </div>
+    <label class="form-label" for="length">Length (MM)</label>
+
+    <select name="length"
+        id="length"
+        class="form-control"
+        required>
+
+        <option value="3000"
+            {{ old('length', $salesOrder->length) == '3000' ? 'selected' : '' }}>
+            3000
+        </option>
+
+        <option value="6000"
+            {{ old('length', $salesOrder->length) == '6000' ? 'selected' : '' }}>
+            6000
+        </option>
+
+    </select>
+</div>
+<div class="form-group">
+    <label class="form-label" for="size">Ukuran</label>
+
+    <select name="size"
+        id="size"
+        class="form-control"
+        required>
+
+        <option value="41X41"
+            {{ old('size', $salesOrder->size) == '41X41' ? 'selected' : '' }}>
+            41X41
+        </option>
+
+        <option value="41X21"
+            {{ old('size', $salesOrder->size) == '41X21' ? 'selected' : '' }}>
+            41X21
+        </option>
+
+    </select>
+</div>
             </div>
 
             <div class="form-row">
@@ -89,7 +140,9 @@
             </div>
 
             <div class="flex gap-12 mt-24">
-                <button type="submit" class="btn btn-primary" id="btn-update-so"><i data-lucide="save"></i> Perbarui</button>
+<button type="submit" class="btn btn-primary" id="btn-submit-so">
+    <i data-lucide="save"></i> Simpan Perubahan
+</button>
                 <a href="{{ route('sales-orders.index') }}" class="btn btn-outline">Batal</a>
             </div>
         </form>
