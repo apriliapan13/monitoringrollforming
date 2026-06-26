@@ -14,6 +14,7 @@ class SalesOrder extends Model
         'description',
         'batch',
         'kg_batch',
+        'size',
         'length',
         'quantity',
         'order_date',
@@ -30,6 +31,7 @@ class SalesOrder extends Model
         'deadline' => 'date',
         'finish_date' => 'date',
         'kg_batch' => 'decimal:2',
+        'size' => 'string',
     ];
 
     public function dailyTargets(): HasMany
@@ -64,26 +66,47 @@ class SalesOrder extends Model
 
     public function getAchievementPercentageAttribute(): float
     {
-        if ($this->quantity <= 0) return 0;
+        if ($this->quantity <= 0) {
+            return 0;
+        }
+
         return round(($this->total_actual / $this->quantity) * 100, 1);
     }
 
     public function getLeadtimeDaysAttribute(): int
     {
-        if (!$this->order_date || !$this->deadline) return 0;
-        return $this->order_date->diffInDays($this->deadline);
+        if (!$this->order_date || !$this->deadline) {
+            return 0;
+        }
+
+        $startDate = $this->order_date->copy();
+
+        // SO yang dibuat jam 13:00 atau setelahnya dihitung mulai hari berikutnya
+        if ($this->created_at && $this->created_at->hour >= 13) {
+            $startDate->addDay();
+        }
+
+        // Minimal 1 hari, dan hari mulai ikut dihitung
+        return max(1, $startDate->diffInDays($this->deadline) + 1);
     }
 
     public function getDaysStatusAttribute(): int
     {
-        if (!$this->finish_date || !$this->deadline) return 0;
+        if (!$this->finish_date || !$this->deadline) {
+            return 0;
+        }
+
         return $this->deadline->diffInDays($this->finish_date, false);
     }
 
     public function getEstimatedDurationAttribute(): float
     {
         $machine = MachineSetting::first();
-        if (!$machine || $machine->daily_capacity <= 0) return 0;
+
+        if (!$machine || $machine->daily_capacity <= 0) {
+            return 0;
+        }
+
         return ceil($this->quantity / $machine->daily_capacity);
     }
 }

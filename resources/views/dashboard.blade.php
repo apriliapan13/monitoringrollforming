@@ -2,7 +2,7 @@
 
 @section('title', 'Dashboard')
 @section('page-title', 'Dashboard')
-@section('breadcrumb', 'Monitoring Kapasitas Mesin Roll Forming 41x41')
+@section('breadcrumb', 'Monitoring Kapasitas Mesin Roll Forming')
 
 @section('content')
 <div class="machine-status-banner banner-{{ strtolower($todayStatus) }}" id="status-banner">

@@ -43,7 +43,7 @@ class SalesOrderController extends Controller
             'project_executive' => 'nullable|string|max:100',
             'description' => 'required|string|max:255',
             'batch' => 'nullable|string|max:50',
-            'kg_batch' => 'nullable|numeric|min:0',
+            'size' => 'required|string|in:41X41,41X21',
             'length' => 'required|integer|min:1',
             'quantity' => 'required|integer|min:1',
             'order_date' => 'required|date',
@@ -63,30 +63,44 @@ class SalesOrderController extends Controller
     }
 
     public function show(SalesOrder $salesOrder)
-    {
-        $salesOrder->load(['dailyTargets','actualProductions']);
+{
+    $salesOrder->load(['dailyTargets', 'actualProductions']);
 
-        $machine = MachineSetting::first();
-        $estimatedDays = $salesOrder->leadtime_days;
-        $estimatedHours = 0;
+    $machine = MachineSetting::first();
 
-        if ($machine && $machine->cycle_time_sec > 0) {
-            $estimatedHours = round(($salesOrder->quantity * $machine->cycle_time_sec) / 3600, 1);
+    // Tanggal mulai produksi mengikuti jam input SO
+    $startDate = $salesOrder->order_date->copy();
+
+    if ($salesOrder->created_at && $salesOrder->created_at->hour >= 13) {
+        $startDate->addDay();
+
+        // Jika jatuh di Sabtu/Minggu, geser ke hari kerja berikutnya
+        while ($startDate->isSaturday() || $startDate->isSunday()) {
+            $startDate->addDay();
         }
-
-        $targetPerDay = $estimatedDays > 0
-            ? ceil($salesOrder->quantity / $estimatedDays)
-            : 0;
-
-        return view('sales-orders.show', compact(
-            'salesOrder',
-            'machine',
-            'estimatedDays',
-            'estimatedHours',
-            'targetPerDay'
-        ));
     }
 
+ // Estimasi hari dihitung dari tanggal mulai produksi
+// Hari mulai ikut dihitung
+$estimatedDays = $startDate->diffInDays($salesOrder->deadline) + 1;
+    $estimatedHours = 0;
+
+    if ($machine && $machine->cycle_time_sec > 0) {
+        $estimatedHours = round(($salesOrder->quantity * $machine->cycle_time_sec) / 3600, 1);
+    }
+
+    $targetPerDay = $estimatedDays > 0
+        ? ceil($salesOrder->quantity / $estimatedDays)
+        : $salesOrder->quantity;
+
+    return view('sales-orders.show', compact(
+        'salesOrder',
+        'machine',
+        'estimatedDays',
+        'estimatedHours',
+        'targetPerDay'
+    ));
+}
     public function edit(SalesOrder $salesOrder)
     {
         return view('sales-orders.edit', compact('salesOrder'));
@@ -99,7 +113,7 @@ class SalesOrderController extends Controller
             'project_executive' => 'nullable|string|max:100',
             'description' => 'required|string|max:255',
             'batch' => 'nullable|string|max:50',
-            'kg_batch' => 'nullable|numeric|min:0',
+            'size' => 'required|string|in:41X41,41X21',
             'length' => 'required|integer|min:1',
             'quantity' => 'required|integer|min:1',
             'order_date' => 'required|date',
@@ -195,42 +209,60 @@ class SalesOrderController extends Controller
                         break;
                     }
 
-                    $unfinished = $group->filter(fn($o) => $remaining[$o->id] > 0);
+$unfinished = $group->filter(fn($o) => $remaining[$o->id] > 0);
 
-                    if ($unfinished->isEmpty()) {
-                        continue;
-                    }
+if ($unfinished->isEmpty()) {
+    continue;
+}
+$totalNeed = 0;
 
-                    $share = max(1, floor($capacity / $unfinished->count()));
+foreach ($unfinished as $order) {
+    $leadTime = max(1, $order->leadtime_days);
+    $totalNeed += (int) ceil($order->quantity / $leadTime);
+}
+$availableCapacity = min($capacity, $totalNeed);
 
-                    foreach ($unfinished as $order) {
+foreach ($unfinished as $order) {
 
-                        if ($capacity <= 0) {
-                            break;
-                        }
+    if ($capacity <= 0) {
+        break;
+    }
 
-                        $alloc = min(
-                            $share,
-                            $remaining[$order->id],
-                            $capacity
-                        );
+// Hitung target harian berdasarkan lead time
+$leadTime = max(1, $order->leadtime_days);
 
-                        if ($alloc <= 0) {
-                            continue;
-                        }
+$dailyTarget = (int) ceil($order->quantity / $leadTime);
 
-                        $target = DailyTarget::firstOrNew([
-                            'sales_order_id' => $order->id,
-                            'target_date' => $currentDate->format('Y-m-d'),
-                        ]);
+// Hitung proporsi kebutuhan SO terhadap total kebutuhan group
+$proportion = $totalNeed > 0
+    ? ($dailyTarget / $totalNeed)
+    : 0;
 
-                        $target->target_qty = ($target->target_qty ?? 0) + $alloc;
-                        $target->created_by = auth()->id();
-                        $target->save();
+// Alokasi kapasitas berdasarkan proporsi
+$plannedAllocation = (int) round($availableCapacity * $proportion);
 
-                        $remaining[$order->id] -= $alloc;
-                        $capacity -= $alloc;
-                    }
+$alloc = min(
+    $plannedAllocation,
+    $remaining[$order->id],
+    $capacity
+);
+
+    if ($alloc <= 0) {
+        continue;
+    }
+
+    $target = DailyTarget::firstOrNew([
+        'sales_order_id' => $order->id,
+        'target_date' => $currentDate->format('Y-m-d'),
+    ]);
+
+    $target->target_qty = ($target->target_qty ?? 0) + $alloc;
+    $target->created_by = auth()->id();
+    $target->save();
+
+    $remaining[$order->id] -= $alloc;
+    $capacity -= $alloc;
+}
                 }
 
 

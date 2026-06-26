@@ -2,7 +2,7 @@
 
 @section('title', 'Kapasitas Mesin')
 @section('page-title', 'Kapasitas Mesin')
-@section('breadcrumb', 'Roll Forming 41x41 - Kapasitas per hari')
+@section('breadcrumb', 'Roll Forming - Kapasitas per hari')
 
 @section('topbar-actions')
 <div class="flex gap-8">

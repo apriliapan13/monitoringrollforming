@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Sistem Monitoring Kapasitas Mesin Roll Forming 41x41">
+    <meta name="description" content="Sistem Monitoring Kapasitas Mesin Roll Forming">
     <title>@yield('title', 'RF Monitor') | Monitoring Kapasitas Mesin</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

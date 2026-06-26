@@ -21,7 +21,7 @@
 </head>
 <body>
     <h1>Laporan Kapasitas Mesin</h1>
-    <h2>Roll Forming 41x41 - {{ \Carbon\Carbon::create(null, $month, 1)->format('F') }} {{ $year }}</h2>
+    <h2>Roll Forming - {{ \Carbon\Carbon::create(null, $month, 1)->format('F') }} {{ $year }}</h2>
 
     @if($machine)
     <div class="info">

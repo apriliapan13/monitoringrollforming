@@ -22,7 +22,7 @@
             <div class="login-left">
                 <div class="login-visual">
                     <div class="visual-badge">MONITORING SYSTEM</div>
-                    <h2 class="visual-title">Roll Forming<br><span>41 x 41</span></h2>
+                    <h2 class="visual-title">Roll <br><span>Forming</span></h2>
                     <p class="visual-desc">Sistem monitoring kapasitas mesin produksi secara real-time untuk Cell 3</p>
                     <div class="visual-stats">
                         <div class="v-stat">
