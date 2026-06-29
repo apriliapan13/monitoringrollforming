@@ -24,8 +24,7 @@ class DailyTargetController extends Controller
         $remainingCapacity = max(0, $dailyCapacity - $totalTarget);
         $utilization = $dailyCapacity > 0 ? round(($totalTarget / $dailyCapacity) * 100, 1) : 0;
 
-        $activeOrders = SalesOrder::where('status', 'ON PROCESS')->get();
-
+$activeOrders = SalesOrder::whereIn('status', ['ON PROCESS', 'LATE'])->get();
         return view('daily-targets.index', compact(
             'targets', 'date', 'dailyCapacity', 'totalTarget',
             'remainingCapacity', 'utilization', 'activeOrders'
