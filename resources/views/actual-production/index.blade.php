@@ -49,10 +49,14 @@
                     <input type="number" name="actual_qty" id="actual_qty" class="form-control" required min="1" placeholder="Masukkan jumlah produksi" aria-required="true">
                 </div>
 
-                <div class="form-group">
-                    <label class="form-label" for="product_type">Jenis Product</label>
-                    <input type="text" name="product_type" id="product_type" class="form-control" placeholder="Misal: L3000, L6000">
-                </div>
+              <div class="form-group">
+    <label class="form-label" for="product_type">Jenis Product</label>
+    <select name="product_type" id="product_type" class="form-control" required>
+        <option value="">Pilih Jenis Product</option>
+        <option value="3000">3000</option>
+        <option value="600">600</option>
+    </select>
+</div>
 
                 <button type="submit" class="btn btn-primary" id="btn-save-actual">
                     <i data-lucide="plus"></i> Simpan Data Aktual

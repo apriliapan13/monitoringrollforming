@@ -19,8 +19,7 @@ class ActualProductionController extends Controller
             ->get();
 
         $totalActual = $actuals->sum('actual_qty');
-        $activeOrders = SalesOrder::where('status', 'ON PROCESS')->get();
-
+$activeOrders = SalesOrder::whereIn('status', ['ON PROCESS', 'LATE'])->get();
         return view('actual-production.index', compact('actuals', 'date', 'totalActual', 'activeOrders'));
     }
 
