@@ -54,7 +54,7 @@
     <select name="product_type" id="product_type" class="form-control" required>
         <option value="">Pilih Jenis Product</option>
         <option value="3000">3000</option>
-        <option value="600">600</option>
+        <option value="600">6000</option>
     </select>
 </div>
 
